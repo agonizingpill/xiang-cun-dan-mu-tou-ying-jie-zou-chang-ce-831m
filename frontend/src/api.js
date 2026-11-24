@@ -14,11 +14,12 @@ export async function request(path, data) {
 }
 
 export async function awaitCompute(token, report) {
-  for (let i = 0; i < 40; i++) {
+  // 最多约 100 秒：可续跑任务可能从中断状态补算较多距离对。
+  for (let i = 0; i < 200; i++) {
     const data = await request('/compute/' + token);
     report(data);
-    if (data.status !== 'queued') return data;
-    await new Promise(resolve => setTimeout(resolve, 250));
+    if (data.status !== 'queued' && data.status !== 'running') return data;
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
-  throw new Error('计算仍在排队，可回到工作页继续查询任务号');
+  throw new Error('计算仍在进行，可凭任务号在本页续跑或继续查询');
 }

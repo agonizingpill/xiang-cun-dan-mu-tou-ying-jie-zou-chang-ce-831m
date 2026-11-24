@@ -48,12 +48,31 @@
           "initial": "CUE-FINAL"
         }
       ],
-      "help": "返回最近代表 cue 与簇内成员。",
+      "help": "返回最近代表 cue 与簇内成员。重复提交或晚班接手都返回同一任务，沿用发起时拍点。",
       "roles": [
         "operator",
         "reviewer"
       ],
       "success": "已写入"
+    },
+    {
+      "name": "resume_cues",
+      "label": "中断后续跑原比较",
+      "path": "/cue_clusters/resume-cues",
+      "fields": [
+        {
+          "name": "token",
+          "label": "原任务号",
+          "kind": "token",
+          "initial": ""
+        }
+      ],
+      "help": "沿用发起时拍点，只补没算完的距离；两人同时续跑看到的是同一个比较。",
+      "roles": [
+        "operator",
+        "reviewer"
+      ],
+      "success": "已续跑"
     },
     {
       "name": "save_cluster",

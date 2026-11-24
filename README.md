@@ -52,8 +52,18 @@ Compose 运行 Nginx、Python FastAPI、独立 Redis 消费进程、SQL 数据�
 |---|---|---|
 | 场地配电和投影线 | `/venues` /venues/sign-venue | `frontend/src/pages/venues.js` |
 | 试投节奏轨迹 | `/cue_tracks` /cue_tracks/record-track，/cue_tracks/lock-track | `frontend/src/pages/cue_tracks.js` |
-| 对场节奏簇 | `/cue_clusters` /cue_clusters/compare-cues，/cue_clusters/save-cluster | `frontend/src/pages/cue_clusters.js` |
+| 对场节奏簇 | `/cue_clusters` /cue_clusters/compare-cues，/cue_clusters/resume-cues，/cue_clusters/save-cluster | `frontend/src/pages/cue_clusters.js` |
 | 交场分路回单 | `/cue_routing` /cue_routing/share-cue，/cue_routing/record-separate | `frontend/src/pages/cue_routing.js` |
+
+### 中断续跑与同一比较
+
+试投算到一半停机时，晚班不用从头等：
+
+- 发起比较即把**当时的拍点快照**固化到 Redis，任务号由快照内容（轨迹编号、拍点、偏移）哈希派生。同一比较重复提交或两人同时提交，都返回同一个任务号，续跑永远沿用发起时拍点，不重新查库。
+- 每个轨迹对的 DTW 距离以 `HSETNX` 逐对写入检查点（`cmp:<token>:distances`）。中断恢复后只补检查点里缺失的距离对，已算完的对不重算、不覆盖；两个 worker 同时续跑同一任务时，每对距离也只算一次。
+- 状态只允许 `queued/running -> ready/rejected` 单向流转。原那次晚些恢复不能覆盖接手后留下的进度或结论，终态任务续跑直接返回结论、不再入队。
+- `/cue_clusters/save-cluster` 是领班签认闸门：距离算齐（`progress.done == progress.total`）且完成归簇（`status=ready` 且结论字段完整）才允许写入台账，半成品返回 409。
+- 实现位于 `backend/core/resumable.py`，逐对距离与归簇拆分在 `backend/domain/learning.py`，worker 分派在 `backend/core/worker.py`。
 
 SQL 实体与约束在 `backend/domain` 下维护。前端使用原生 ES modules。核心算子为 DTW + 凝聚层次聚类。以绝对时间差为局部代价，DTW 归一化后作为层次聚类的距离矩阵，簇内总距离最短的轨迹为代表。
 

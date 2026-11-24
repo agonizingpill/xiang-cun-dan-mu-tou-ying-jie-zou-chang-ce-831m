@@ -36,13 +36,20 @@ export function actionForm(action, refresh) {
     notice.className = 'status';
     try {
       const data = await request(action.path, parse(form, action.fields));
-      if (data.token && data.status === 'queued') {
+      if (data.token) {
         evidence.save(data.token);
+        // 续跑可能直接返回终态：awaitCompute 首次轮询即返回，统一走结论展示。
         const result = await awaitCompute(data.token, current => {
-          notice.textContent = COMPUTE_STATES[current.status] || current.status;
+          const state = COMPUTE_STATES[current.status] || current.status;
+          const p = current.progress;
+          notice.textContent = p && p.total
+            ? `任务 ${data.token} · ${state} · 距离 ${p.done}/${p.total}`
+            : `任务 ${data.token} · ${state}`;
         });
         if (result.status === 'rejected') throw new Error(result.detail);
-        notice.textContent = '任务 ' + data.token + ' · ' + display(result.result);
+        const p = result.progress;
+        notice.textContent = '任务 ' + data.token + ' · 距离算齐 ' + (p ? `${p.done}/${p.total}` : '')
+          + ' 已归簇 · ' + display(result.result);
       } else {
         notice.textContent = action.success + ' · ' + display(data.code ?? data.status);
       }

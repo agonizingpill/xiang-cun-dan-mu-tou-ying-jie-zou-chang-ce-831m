@@ -6,7 +6,7 @@ from core.db import transaction
 from core.records import scan
 from domain import cue_clusters_service as service
 from domain.cue_clusters_model import cue_clusters
-from domain.cue_clusters_schemas import CompareCues, SaveCluster
+from domain.cue_clusters_schemas import CompareCues, ResumeCues, SaveCluster
 
 router = APIRouter()
 
@@ -22,6 +22,15 @@ def compare_cues(data: CompareCues, user=Depends(actor)):
     with transaction() as conn:
         output = service.compare_cues(conn, user, data)
         record(conn, user, 'cue_clusters.compare_cues')
+        return output
+
+
+@router.post('/cue_clusters/resume-cues')
+def resume_cues(data: ResumeCues, user=Depends(actor)):
+    allow(user, ('operator', 'reviewer'))
+    with transaction() as conn:
+        output = service.resume_cues(conn, user, data)
+        record(conn, user, 'cue_clusters.resume_cues')
         return output
 
 
